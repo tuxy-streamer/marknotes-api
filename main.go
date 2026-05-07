@@ -18,8 +18,6 @@ type Note struct {
 	Mu      sync.RWMutex
 }
 
-type Self []Note
-
 func newNote() *Note {
 	return &Note{
 		Name:    "",
