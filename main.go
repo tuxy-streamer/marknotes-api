@@ -15,13 +15,13 @@ import (
 type Note struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
+	Group   string `json:"group"`
 	Mu      sync.RWMutex
 }
 
 func newNote() *Note {
 	return &Note{
-		Name:    "",
-		Content: "",
+		Name: "", Content: "", Group: "",
 	}
 }
 
@@ -32,7 +32,11 @@ func saveNotesHandler(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, "Failed to parse request body as json", http.StatusInternalServerError)
 		return
 	}
-	file, err := os.Create(note.Name)
+	if err := os.Mkdir(note.Group, os.ModePerm); err != nil {
+		http.Error(rw, "Failed to create group directory ", http.StatusInternalServerError)
+		return
+	}
+	file, err := os.Create(note.Group + "/" + note.Name)
 	if err != nil {
 		http.Error(rw, "Failed to create note file", http.StatusInternalServerError)
 		return
