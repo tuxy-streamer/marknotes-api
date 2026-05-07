@@ -60,6 +60,9 @@ func homeHandler(rw http.ResponseWriter, req *http.Request) {
 	payload, err := json.Marshal(apiDocs)
 	if err != nil {
 		http.Error(rw, "Error: Failed to generate json payload", http.StatusInternalServerError)
+		return
+		return
+		return
 	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
