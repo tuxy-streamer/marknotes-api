@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
+
+	"github.com/yuin/goldmark"
 )
 
 // TODO: provide an endpoint to check the grammar of the note.
-// TODO: provide an endpoint to save the note that can be passed in as Markdown text.
-// TODO: provide an endpoint to list the saved notes (i.e. uploaded markdown files).
 // TODO: Return the HTML version of the Markdown note (rendered note) through another endpoint.
 
 type Note struct {
@@ -88,9 +91,48 @@ func listNotesHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(payload)
 }
 
-func checkGrammar(rw http.ResponseWriter, req *http.Request) {}
+func checkGrammarHandler(rw http.ResponseWriter, req *http.Request) {
+	note := newNote()
+	defer req.Body.Close()
+	if err := json.NewDecoder(req.Body).Decode(&note); err != nil {
+		http.Error(rw, "Failed to parse request body as json", http.StatusInternalServerError)
+		return
+	}
+	path := filepath.Join(note.Group, note.Name)
+	cmd := exec.Command("harper-cli", "lint", "--format=json", path)
+	result, err := cmd.CombinedOutput()
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write(result)
+	if err != nil {
+		rw.Write([]byte(err.Error()))
+	}
+}
 
-func parseHtml(rw http.ResponseWriter, req *http.Request) {}
+func parseHtml(rw http.ResponseWriter, req *http.Request) {
+	note := newNote()
+	defer req.Body.Close()
+	if err := json.NewDecoder(req.Body).Decode(&note); err != nil {
+		http.Error(rw, "Failed to parse request body as json", http.StatusInternalServerError)
+		return
+	}
+	path := filepath.Join(note.Group, note.Name)
+	c, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(rw, "Failed to read note", http.StatusInternalServerError)
+		return
+	}
+	note.Content = string(c)
+	var buf bytes.Buffer
+	err = goldmark.Convert([]byte(note.Content), &buf)
+	if err != nil {
+		http.Error(rw, "Failed to convert markdown to html", http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write(buf.Bytes())
+}
 
 func homeHandler(rw http.ResponseWriter, req *http.Request) {
 	apiDocs := map[string]string{
@@ -114,7 +156,7 @@ func main() {
 	mux.HandleFunc("/", homeHandler)
 	mux.HandleFunc("/save-notes", saveNotesHandler)
 	mux.HandleFunc("/list-notes", listNotesHandler)
-	// mux.HandleFunc("/check-grammar", checkGrammar)
-	// mux.HandleFunc("/parse-html", parseHtml)
+	mux.HandleFunc("/check-grammar", checkGrammarHandler)
+	mux.HandleFunc("/parse-html", parseHtml)
 	http.ListenAndServe(":3000", mux)
 }
