@@ -12,9 +12,6 @@ import (
 	"github.com/yuin/goldmark"
 )
 
-// TODO: provide an endpoint to check the grammar of the note.
-// TODO: Return the HTML version of the Markdown note (rendered note) through another endpoint.
-
 type Note struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
